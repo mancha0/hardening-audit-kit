@@ -6,10 +6,9 @@ Audita un servidor Linux y genera un informe con score 0-100,
 hallazgos priorizados (CRITICAL/HIGH/MEDIUM/LOW) y remediations concretas.
 
 Uso:
-    sudo python3 hardening_audit.py                 # audit completo
-    python3 hardening_audit.py --html               # + informe HTML
-    python3 hardening_audit.py --json out.json      # salida JSON (para CI/CD)
-    python3 hardening_audit.py --baseline base.json # compara con auditoría previa
+    sudo python3 hardening_audit.py            # audit completo → hardening_report.md
+    python3 hardening_audit.py --quiet         # solo el score en stdout (CI/cron)
+    python3 hardening_audit.py --md out.md     # ruta del informe Markdown
 
 Requisitos: Python 3.8+, solo stdlib. Sin dependencias externas.
 """
@@ -105,60 +104,6 @@ def ssh_port():
         if m and int(m.group(1)) != 22:
             return True, None
     return False, "SSH en puerto 22 estándar (expuesto a scans; cambia a puerto alto)"
-
-    rc, out = run("grep -r 'NOPASSWD' /etc/sudoers /etc/sudoers.d/ 2>/dev/null | grep -v '^#'")
-    if rc == 0 and out.strip():
-        return False, "Entradas NOPASSWD en sudoers: " + out.strip().splitlines()[0][:100]
-    return True, None
-
-    rc, out = run("uname -r")
-    current = out.strip()
-    rc2, out2 = run("dpkg -l 'linux-image-*' 2>/dev/null | grep '^ii' | awk '{print $2}'")
-    installed = [l for l in out2.splitlines() if l.strip()]
-    removable = [k for k in installed if current not in k]
-    if len(removable) > 2:
-        return False, f"{len(removable)} kernels antiguos instalados (actual: {current})"
-    return True, None
-
-    rc, out = run("ss -tlnp 2>/dev/null | grep -v '^State' | awk '{print $4}'")
-    addrs = [l.strip() for l in out.splitlines() if l.strip()]
-    wildcard = [a for a in addrs if a.startswith(("0.0.0.0", "[::]"))]
-    if len(wildcard) > 5:
-        return False, f"{len(wildcard)} servicios escuchando en interfaces públicas (revisa si son necesarios)"
-    return True, None
-
-    rc, out = run("find / -xdev -perm -4000 -type f 2>/dev/null | wc -l", timeout=30)
-    try:
-        n = int(out.strip() or 0)
-        if n > 60:
-            return False, f"{n} ficheros SUID (un sistema típico tiene <40)"
-    except ValueError:
-        pass
-    return True, None
-
-    rc, out = run("grep -h '^umask' /etc/login.defs 2>/dev/null | head -1")
-    if not out.strip():
-        return False, "umask no definida en /etc/login.defs (recomendado 027)"
-    m = re.search(r"(\d+)", out)
-    if m and int(m.group(1), 8) >= 0o02:
-        return True, None
-    return False, f"umask demasiado permisiva: {out.strip()}"
-
-    rc, out = run("mount | grep ' /tmp ' 2>/dev/null || findmnt -no OPTIONS /tmp 2>/dev/null")
-    if "nosuid" in out:
-        return True, None
-    return False, "/tmp montado sin nosuid (recomendado: mount -o remount,nosuid /tmp)"
-
-    rc, out = run("cat /proc/sys/kernel/core_uses_pid 2>/dev/null; ulimit -c 2>/dev/null")
-    if "0" in out:
-        return True, None
-    return False, "Core dumps habilitados (pueden contener secretos en memoria)"
-
-    rc, out = run("hostname 2>/dev/null")
-    h = out.strip()
-    if not h or h.startswith(("VM-", "vm-", "iZ", "ip-")):
-        return False, f"Hostname por defecto de proveedor: '{h}' (identifica la infra)"
-    return True, None
 
 # ---------------------------------------------------------------- engine
 def audit():

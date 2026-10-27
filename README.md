@@ -36,7 +36,7 @@ Exit code is `0` when score ≥ 60, `1` otherwise — handy as a CI gate:
 
 ## ⭐ PRO Edition
 
-The **PRO edition** (on [Gumroad](https://gumroad.com/)) adds:
+The **PRO edition** (coming soon on Gumroad) adds:
 
 - All **15 checks** (SUID files, NOPASSWD sudoers, stale kernels, listening services, umask, /tmp nosuid, core dumps, default cloud hostnames…)
 - **HTML report** — client-ready, send it to your CISO or customer
